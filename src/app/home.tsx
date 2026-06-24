@@ -28,7 +28,7 @@ export default function HomeScreen() {
 
           <Button
             fullWidth
-            onPress={() => {}}
+            onPress={() => router.push('/reflection')}
           >
             Start Reflection
           </Button>
