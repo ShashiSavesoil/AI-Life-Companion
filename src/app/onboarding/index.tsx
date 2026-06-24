@@ -1,8 +1,7 @@
 
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Button as RNButton } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { spacing, typography } from '@/theme';
@@ -10,23 +9,23 @@ import { spacing, typography } from '@/theme';
 export default function SplashScreen() {
   const router = useRouter();
 
-  const handlePress = () => {
-    router.push('/onboarding/welcome');
-  };
-
   return (
     <Screen>
       <View style={styles.page}>
-        <Card style={styles.heroCard}>
-          <Text style={styles.title}>AI Life Companion</Text>
+        <Card style={styles.heroCard} borderless>
+          <Text style={styles.title}>THIS IS THE CORRECT FILE</Text>
 
           <Text style={styles.description}>
             A calm, premium onboarding experience to help you reflect with clarity and ease.
           </Text>
 
-          <Button fullWidth onPress={handlePress}>
-            Begin
-          </Button>
+          <RNButton
+            title="Begin"
+            onPress={() => {
+              console.log('RN Button Pressed');
+              router.push('/onboarding/welcome');
+            }}
+          />
         </Card>
       </View>
     </Screen>
