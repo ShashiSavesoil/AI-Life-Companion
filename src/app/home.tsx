@@ -161,7 +161,7 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.quickActionsGrid}>
             {renderQuickAction('Journal', '/journal', false)}
-            {renderQuickAction('AI Chat', undefined, true)}
+            {renderQuickAction('AI Chat', '/chat', false)}
             {renderQuickAction('Goals', undefined, true)}
             {renderQuickAction('Habits', undefined, true)}
           </View>
