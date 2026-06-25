@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 
 import { Button } from '@/components/ui/button';
@@ -12,105 +12,67 @@ import QuestionCard from '@/components/reflection/QuestionCard';
 import ReflectionInput from '@/components/reflection/ReflectionInput';
 
 import { saveReflection } from '@/services/reflection-storage';
-import { ReflectionEntry } from '@/types/reflection';
+import { getReflectionTemplate } from '@/services/reflection-engine';
+import { ReflectionEntry, ReflectionResponse } from '@/types/reflection';
 
 import { spacing } from '@/theme';
 
-const QUESTIONS = [
-  {
-    title: 'Emotion',
-    question: 'How are you feeling right now?',
-    type: 'mood',
-  },
-  {
-    title: 'Meaning',
-    question: 'What was the most meaningful moment today?',
-    type: 'text',
-  },
-  {
-    title: 'Challenge',
-    question: 'What challenged you the most today?',
-    type: 'text',
-  },
-  {
-    title: 'Gratitude',
-    question: 'What are you grateful for today?',
-    type: 'text',
-  },
-  {
-    title: 'Tomorrow',
-    question: 'What is one small intention for tomorrow?',
-    type: 'text',
-  },
-];
-
 export default function ReflectionScreen() {
   const router = useRouter();
+  
+  // The UI is now a generic renderer. It loads the template directly from the engine.
+  const template = useMemo(() => getReflectionTemplate('quick'), []);
+  const questions = template.questions;
+
   const [step, setStep] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [answers, setAnswers] = useState({
-    mood: '',
-    meaningfulMoment: '',
-    challenge: '',
-    gratitude: '',
-    tomorrowGoal: '',
-  });
+  // Dynamic dictionary to hold answers keyed by question ID, not hardcoded names
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
-  const current = QUESTIONS[step];
+  const current = questions[step];
+  const currentValue = answers[current.id] || '';
 
   const updateAnswer = (text: string) => {
-    const updated = { ...answers };
-
-    switch (step) {
-      case 1:
-        updated.meaningfulMoment = text;
-        break;
-      case 2:
-        updated.challenge = text;
-        break;
-      case 3:
-        updated.gratitude = text;
-        break;
-      case 4:
-        updated.tomorrowGoal = text;
-        break;
-    }
-
-    setAnswers(updated);
+    setAnswers((prev) => ({
+      ...prev,
+      [current.id]: text,
+    }));
   };
 
-  const currentValue =
-    step === 1
-      ? answers.meaningfulMoment
-      : step === 2
-      ? answers.challenge
-      : step === 3
-      ? answers.gratitude
-      : step === 4
-      ? answers.tomorrowGoal
-      : '';
-
-  const isCurrentStepValid =
-    current.type === 'mood'
-      ? answers.mood !== ''
-      : currentValue.trim().length > 0;
+  const isCurrentStepValid = current.optional || currentValue.trim().length > 0;
 
   const handleNext = async () => {
-    if (step < QUESTIONS.length - 1) {
+    if (step < questions.length - 1) {
       setStep(step + 1);
     } else {
       setIsSaving(true);
       try {
+        // Map dynamic answers into psychological measurements
+        const responses: ReflectionResponse[] = questions.map((q) => ({
+          questionId: q.id,
+          dimension: q.dimension,
+          framework: q.framework,
+          answer: answers[q.id] || '',
+        }));
+
+        // Helper to extract measurements for legacy compatibility
+        const getLegacyValue = (dimension: string) => {
+          return responses.find(r => r.dimension === dimension)?.answer || '';
+        };
+
         const newEntry: ReflectionEntry = {
           id: Date.now().toString(),
           date: new Date().toISOString(),
-          mood: answers.mood,
-          meaningfulMoment: answers.meaningfulMoment,
-          challenge: answers.challenge,
-          gratitude: answers.gratitude,
-          tomorrowGoal: answers.tomorrowGoal,
           createdAt: Date.now(),
+          responses, // The new standard
+          
+          // Fallbacks for MVP dashboard/memory integration
+          mood: getLegacyValue('emotional_wellbeing'),
+          meaningfulMoment: getLegacyValue('meaning'),
+          challenge: '', 
+          gratitude: '',
+          tomorrowGoal: '',
         };
 
         await saveReflection(newEntry);
@@ -126,13 +88,13 @@ export default function ReflectionScreen() {
   return (
     <Screen>
       <Header
-        title="Today's Reflection"
-        subtitle="Take a few calm minutes for yourself."
+        title={template.title}
+        subtitle={template.description}
       />
 
       <ProgressBar
         current={step + 1}
-        total={QUESTIONS.length}
+        total={questions.length}
       />
 
       <QuestionCard
@@ -141,20 +103,15 @@ export default function ReflectionScreen() {
       />
 
       <View style={styles.content}>
-        {current.type === 'mood' ? (
+        {current.inputType === 'mood' ? (
           <MoodSelector
-            onSelect={(mood) =>
-              setAnswers({
-                ...answers,
-                mood,
-              })
-            }
+            onSelect={(mood) => updateAnswer(mood)}
           />
         ) : (
           <ReflectionInput
             value={currentValue}
             onChangeText={updateAnswer}
-            placeholder="Write your thoughts..."
+            placeholder={current.description || "Write your thoughts..."}
           />
         )}
 
@@ -163,7 +120,7 @@ export default function ReflectionScreen() {
           onPress={handleNext}
           disabled={isSaving || !isCurrentStepValid}
         >
-          {step === QUESTIONS.length - 1
+          {step === questions.length - 1
             ? 'Finish Reflection'
             : 'Continue'}
         </Button>
