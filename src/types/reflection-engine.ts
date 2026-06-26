@@ -1,24 +1,50 @@
-import { PsychologicalDimension, PsychologyFramework } from './reflection-engine';
+export type ReflectionMode = 'quick' | 'guided' | 'deep';
 
-export interface ReflectionResponse {
-  questionId: string;
-  dimension: PsychologicalDimension;
+export type PsychologicalDimension = 
+  | 'emotional_wellbeing' 
+  | 'energy' 
+  | 'stress' 
+  | 'meaning' 
+  | 'gratitude' 
+  | 'relationships' 
+  | 'competence' 
+  | 'growth' 
+  | 'self_compassion' 
+  | 'autonomy' 
+  | 'mindfulness' 
+  | 'purpose';
+
+export type PsychologyFramework = 
+  | 'General' 
+  | 'CBT' 
+  | 'ACT' 
+  | 'Gratitude' 
+  | 'PERMA' 
+  | 'Self-Determination Theory' 
+  | 'Mindfulness';
+
+export type InputType = 'mood' | 'slider' | 'text_short' | 'text_long' | 'boolean' | 'choice_multiple' | 'rating';
+
+export interface ReflectionQuestion {
+  id: string;
+  version: number;
   framework: PsychologyFramework;
-  answer: string;
+  dimension: PsychologicalDimension;
+  title: string;
+  question: string;
+  description?: string;
+  inputType: InputType;
+  optional: boolean;
+  order: number;
+  tags: string[];
+  analysisWeight: number;
 }
 
-export interface ReflectionEntry {
+export interface ReflectionTemplate {
   id: string;
-  date: string;
-  createdAt: number;
-  
-  // The new, generic measurement data
-  responses: ReflectionResponse[];
-  
-  // Legacy fields (Maintained for backward compatibility with Home and Memory Engine MVP)
-  mood: string;
-  meaningfulMoment: string;
-  challenge: string;
-  gratitude: string;
-  tomorrowGoal: string;
+  version: number;
+  mode: ReflectionMode;
+  title: string;
+  description: string;
+  questions: ReflectionQuestion[];
 }
