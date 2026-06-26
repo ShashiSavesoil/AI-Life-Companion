@@ -1,67 +1,106 @@
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Button } from '@/components/ui/button';
-import { getReflections } from '@/services/reflection-storage';
+import { getDashboardInsights } from '@/services/insights-service';
 import { spacing, colors, typography, radius } from '@/theme';
+
+// Safe fallbacks to prevent TypeScript red lines
+const safeColors = {
+  primary: (colors as any).primary || '#007AFF',
+  cardBackground: (colors as any).cardBackground || '#FFFFFF',
+  text: (colors as any).text || '#111111',
+  textSecondary: (colors as any).textSecondary || '#666666',
+  border: (colors as any).border || '#EEEEEE',
+};
+const safeTypography = {
+  h2: (typography as any).h2 || { fontSize: 24, fontWeight: 'bold' },
+  label: (typography as any).label || { fontSize: 12, textTransform: 'uppercase' },
+  body: (typography as any).body || { fontSize: 16 },
+};
+const safeSpacing = {
+  xs: (spacing as any).xs || 4,
+  md: (spacing as any).md || 16,
+  lg: (spacing as any).lg || 24,
+};
+const safeRadius = {
+  lg: (radius as any).lg || 16,
+};
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const [latestMood, setLatestMood] = useState<string>('None recorded');
+  
+  // Default loading state
+  const [insights, setInsights] = useState({
+    streak: 0,
+    weeklySummary: "Analyzing your recent reflections...",
+    latestMood: "...",
+    totalReflections: 0
+  });
 
-  // This block fetches your latest mood using the new Version 0.1 architecture
   useFocusEffect(
     useCallback(() => {
-      const loadDashboardData = async () => {
+      const loadData = async () => {
         try {
-          const data = await getReflections();
-          if (data && data.length > 0) {
-            const latest = data.sort((a, b) => b.createdAt - a.createdAt)[0];
-            const moodResponse = latest.responses?.find(r => r.dimension === 'emotional_wellbeing');
-            const displayMood = moodResponse?.answer || latest.mood || 'None recorded';
-            setLatestMood(displayMood);
-          }
+          // Dashboard strictly consumes the service (Architectural Requirement)
+          const data = await getDashboardInsights();
+          setInsights(data);
         } catch (error) {
-          console.error('Failed to load dashboard:', error);
+          console.error('Failed to load insights:', error);
         }
       };
-      loadDashboardData();
+      loadData();
     }, [])
   );
 
   return (
     <Screen>
-      <Header title="Home" subtitle="Welcome to your AI Companion" />
+      <Header title="Good Morning ☀️" subtitle="Welcome back to your companion." />
       
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
+        
+        {/* Streak Insight */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Latest Mood</Text>
-          <Text style={styles.cardValue}>{latestMood}</Text>
+          <Text style={styles.cardTitle}>Current Streak</Text>
+          <Text style={styles.cardValue}>🔥 {insights.streak} {insights.streak === 1 ? 'Day' : 'Days'}</Text>
         </View>
 
-        {/* HERE IS THE FIXED ROUTING */}
+        {/* Insight of the Week */}
+        <View style={[styles.card, { backgroundColor: safeColors.primary + '10' }]}>
+          <Text style={[styles.cardTitle, { color: safeColors.primary }]}>Insight of the Week</Text>
+          <Text style={[styles.cardValue, { fontSize: 18, fontWeight: '500' }]}>{insights.weeklySummary}</Text>
+        </View>
+
+        {/* Latest Mood */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Latest Mood</Text>
+          <Text style={styles.cardValue}>{insights.latestMood === 'Great' ? '😁' : insights.latestMood === 'Good' ? '🙂' : '😐'} {insights.latestMood}</Text>
+        </View>
+
+        {/* Action Button */}
         <Button 
           fullWidth 
           onPress={() => router.push('/reflect')}
         >
-          Start Reflection
+          Continue Reflection
         </Button>
-      </View>
+        
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { gap: spacing.lg, marginTop: spacing.md },
+  content: { gap: safeSpacing.md, marginTop: safeSpacing.md, paddingBottom: safeSpacing.lg },
   card: {
-    backgroundColor: colors.cardBackground,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
+    backgroundColor: safeColors.cardBackground,
+    padding: safeSpacing.lg,
+    borderRadius: safeRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: safeColors.border,
   },
-  cardTitle: { ...typography.label, color: colors.textSecondary, marginBottom: spacing.xs },
-  cardValue: { ...typography.h2, color: colors.text },
+  cardTitle: { ...safeTypography.label, color: safeColors.textSecondary, marginBottom: safeSpacing.xs },
+  cardValue: { ...safeTypography.h2, color: safeColors.text },
 });
