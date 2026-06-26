@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Screen } from '@/components/ui/screen';
@@ -19,6 +19,7 @@ const safeTypography = {
   h2: (typography as any).h2 || { fontSize: 24, fontWeight: 'bold' },
   label: (typography as any).label || { fontSize: 12, textTransform: 'uppercase' },
   body: (typography as any).body || { fontSize: 16 },
+  button: (typography as any).button || { fontSize: 16, fontWeight: 'bold' },
 };
 const safeSpacing = {
   xs: (spacing as any).xs || 4,
@@ -86,6 +87,16 @@ export default function DashboardScreen() {
         >
           Continue Reflection
         </Button>
+        
+        {/* NEW: View Goals Button */}
+        <TouchableOpacity 
+          style={{ marginTop: 16, padding: 16, alignItems: 'center' }} 
+          onPress={() => router.push('/goals')}
+        >
+          <Text style={{ ...safeTypography.button, color: safeColors.primary }}>
+            View Growth Goals
+          </Text>
+        </TouchableOpacity>
         
       </ScrollView>
     </Screen>

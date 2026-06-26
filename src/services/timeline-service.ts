@@ -1,65 +1,70 @@
 import { getReflections } from './reflection-storage';
-import { calculateReflectionStreak, calculateMoodTrend } from './insights-service';
+import { calculateReflectionStreak } from './insights-service';
+import { getGoals } from './goal-service';
 import { TimelineEvent } from '@/types/timeline';
 
 export const getTimelineEvents = async (): Promise<TimelineEvent[]> => {
   const reflections = await getReflections();
-  if (!reflections || reflections.length === 0) return [];
-
+  const goals = await getGoals();
   const events: TimelineEvent[] = [];
   const now = Date.now();
 
-  // 1. Generate events for every Reflection
+  // 1. Reflection Events
   reflections.forEach(r => {
-    // Try to find an intention or meaning for the subtitle
     const intention = r.responses?.find(res => res.dimension === 'growth' && res.questionId.includes('tomorrow'))?.answer;
-    const meaning = r.responses?.find(res => res.dimension === 'meaning')?.answer;
     const mood = r.responses?.find(res => res.dimension === 'emotional_wellbeing')?.answer || r.mood;
-
-    let subtitle = 'Completed a reflection';
-    if (intention) subtitle = `Intention: "${intention}"`;
-    else if (meaning) subtitle = `Meaning: "${meaning}"`;
-    else if (mood) subtitle = `Felt ${mood.toLowerCase()}`;
-
+    
     events.push({
       id: `ref_${r.id}`,
       type: 'reflection',
       title: 'Guided Reflection',
-      subtitle: subtitle,
+      subtitle: intention ? `Intention: "${intention}"` : `Felt ${mood?.toLowerCase() || 'reflective'}`,
       createdAt: r.createdAt,
-      icon: 'edit-2', // Feather icon name
+      icon: 'edit-2',
       metadata: { reflectionId: r.id }
     });
   });
 
-  // 2. Generate dynamic events (Streaks & Insights)
-  const currentStreak = calculateReflectionStreak(reflections);
-  if (currentStreak >= 3) {
+  // 2. Goal Events (Creation & Completion)
+  goals.forEach(g => {
+    // Goal Created
     events.push({
-      id: `streak_${now}`,
-      type: 'streak',
-      title: `${currentStreak}-Day Reflection Streak`,
-      subtitle: 'You are building a powerful habit.',
-      createdAt: now, // Pin to top
-      icon: 'zap',
+      id: `goal_created_${g.id}`,
+      type: 'goal',
+      title: 'New Goal Set',
+      subtitle: g.title,
+      createdAt: g.createdAt,
+      icon: 'target',
     });
-  }
 
-  // 3. Milestone Insight (First Reflection)
+    // Goal Completed
+    if (g.status === 'completed' && g.completedAt) {
+      events.push({
+        id: `goal_completed_${g.id}`,
+        type: 'achievement',
+        title: 'Goal Conquered! 🏆',
+        subtitle: `You completed: ${g.title}`,
+        createdAt: g.completedAt,
+        icon: 'award',
+      });
+    }
+  });
+
+  // 3. Streak Events
   if (reflections.length > 0) {
-    const firstReflection = [...reflections].sort((a, b) => a.createdAt - b.createdAt)[0];
-    events.push({
-      id: 'milestone_first',
-      type: 'achievement',
-      title: 'Began Your Journey',
-      subtitle: 'You took the first step by completing your first reflection.',
-      createdAt: firstReflection.createdAt - 1000, // Place just before the first reflection
-      icon: 'flag',
-    });
+    const currentStreak = calculateReflectionStreak(reflections);
+    if (currentStreak >= 3) {
+      events.push({
+        id: `streak_${now}`,
+        type: 'streak',
+        title: `${currentStreak}-Day Streak`,
+        subtitle: 'You are building a powerful habit.',
+        createdAt: now, 
+        icon: 'zap',
+      });
+    }
   }
 
-  // 4. Sort strictly chronologically (Newest first)
-  events.sort((a, b) => b.createdAt - a.createdAt);
-
-  return events;
+  // Sort chronologically (Newest first)
+  return events.sort((a, b) => b.createdAt - a.createdAt);
 };
