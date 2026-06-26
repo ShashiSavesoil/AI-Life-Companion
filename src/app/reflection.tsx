@@ -1,35 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { 
   StyleSheet, View, Text, TextInput, TouchableOpacity, 
   ScrollView, KeyboardAvoidingView, Platform 
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Screen } from '@/components/ui/screen';
 import { getReflectionTemplate } from '@/services/reflection-engine';
 import { saveReflection } from '@/services/reflection-storage'; 
-import { ReflectionMode } from '@/types/reflection-engine';
+import { ReflectionMode, ReflectionTemplate } from '@/types/reflection-engine';
 import { ReflectionEntry, ReflectionResponse } from '@/types/reflection';
 import { colors, spacing, typography, radius } from '@/theme';
 
 export default function ReflectionScreen() {
   const router = useRouter();
   
-  // 1. Grab the mode from the Reflection Hub (e.g., ?mode=quick or ?mode=guided)
   const { mode } = useLocalSearchParams<{ mode: string }>();
   
-  // 2. Fetch the correct template (defaults to quick)
-  const template = getReflectionTemplate((mode as ReflectionMode) || 'quick');
-  const questions = template.questions;
+  // 1. New Async State Management
+  const [template, setTemplate] = useState<ReflectionTemplate | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // 3. State Management
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
 
+  // 2. Fetch the template asynchronously (checking memory for follow-ups)
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      getReflectionTemplate((mode as ReflectionMode) || 'quick').then(t => {
+        if (isMounted) {
+          setTemplate(t);
+          setLoading(false);
+        }
+      });
+      return () => { isMounted = false; };
+    }, [mode])
+  );
+
+  // 3. Loading Gatekeeper (Prevents the crash!)
+  if (loading || !template) {
+    return (
+      <Screen>
+        <View style={styles.centerContainer}>
+          <Text style={styles.loadingText}>Preparing your reflection...</Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  // 4. Safe to read questions now that loading is finished
+  const questions = template.questions;
   const currentQuestion = questions[currentIndex];
   const currentAnswer = answers[currentQuestion.id] || '';
 
-  // 4. Validation (Can the user continue?)
   const canContinue = currentQuestion.optional || currentAnswer.trim().length > 0;
 
   const handleNext = async () => {
@@ -43,7 +67,6 @@ export default function ReflectionScreen() {
   const handleFinish = async () => {
     setIsSaving(true);
     try {
-      // Map all answers to the V0.1 Data Model
       const responses: ReflectionResponse[] = questions.map(q => ({
         questionId: q.id,
         dimension: q.dimension,
@@ -54,12 +77,10 @@ export default function ReflectionScreen() {
         id: Date.now().toString(),
         createdAt: Date.now(),
         responses: responses,
-        // Safe fallbacks for older legacy components
         mood: responses.find(r => r.dimension === 'emotional_wellbeing')?.answer,
         meaningfulMoment: responses.find(r => r.dimension === 'meaning')?.answer,
       };
 
-      // Save to storage and navigate back to the Journal tab
       await saveReflection(newEntry);
       router.replace('/journal'); 
     } catch (error) {
@@ -69,7 +90,6 @@ export default function ReflectionScreen() {
     }
   };
 
-  // 5. Input Renderer (Handles Mood vs Text/Sliders)
   const renderInput = () => {
     if (currentQuestion.inputType === 'mood') {
       const moods = ['Great', 'Good', 'Okay', 'Bad', 'Awful'];
@@ -93,7 +113,7 @@ export default function ReflectionScreen() {
         style={[styles.textInput, currentQuestion.inputType === 'text_long' && styles.textInputLarge]}
         multiline={currentQuestion.inputType === 'text_long'}
         placeholder={currentQuestion.description || "Type your answer here..."}
-        placeholderTextColor={colors.textSecondary}
+        placeholderTextColor={safeColors.textSecondary}
         value={currentAnswer}
         onChangeText={(text) => setAnswers(prev => ({ ...prev, [currentQuestion.id]: text }))}
       />
@@ -108,29 +128,24 @@ export default function ReflectionScreen() {
         style={{ flex: 1 }} 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{template.title}</Text>
           <Text style={styles.subtitle}>{template.description}</Text>
         </View>
 
-        {/* Progress Bar */}
         <View style={styles.progressTrack}>
           <View style={[styles.progressBar, { width: `${progress}%` }]} />
         </View>
         <Text style={styles.progressText}>Question {currentIndex + 1} of {questions.length}</Text>
 
         <ScrollView contentContainerStyle={styles.content}>
-          {/* Question Card */}
           <View style={styles.questionCard}>
             <Text style={styles.dimensionLabel}>{currentQuestion.title.toUpperCase()}</Text>
             <Text style={styles.questionText}>{currentQuestion.question}</Text>
           </View>
-
           {renderInput()}
         </ScrollView>
 
-        {/* Footer Button */}
         <View style={styles.footer}>
            <TouchableOpacity 
              style={[styles.continueButton, !canContinue && styles.continueButtonDisabled]}
@@ -147,7 +162,6 @@ export default function ReflectionScreen() {
   );
 }
 
-// Safe color fallbacks to fix TypeScript red lines
 // Safe fallbacks to fix TypeScript red lines
 const safeColors = {
   primary: (colors as any).primary || '#007AFF',
@@ -182,6 +196,8 @@ const safeRadius = {
 };
 
 const styles = StyleSheet.create({
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { ...safeTypography.body, color: safeColors.textSecondary },
   header: { marginBottom: safeSpacing.lg, marginTop: safeSpacing.md },
   title: { ...safeTypography.h2, color: safeColors.text, marginBottom: safeSpacing.xs },
   subtitle: { ...safeTypography.body, color: safeColors.textSecondary },

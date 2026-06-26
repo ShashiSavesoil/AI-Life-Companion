@@ -1,4 +1,5 @@
 import { ReflectionTemplate, ReflectionMode, ReflectionQuestion } from '@/types/reflection-engine';
+import { getFollowUpQuestions } from './continuity-service';
 
 // ============================================================================
 // SPRINT 1: QUICK REFLECTION (Preserved)
@@ -133,7 +134,7 @@ const GUIDED_CORE_QUESTIONS: ReflectionQuestion[] = [
     inputType: 'text_short', optional: true, order: 7, tags: ['core'], analysisWeight: 1.2,
   },
   {
-    id: 'q_guided_core_09', version: 1, framework: 'Mindfulness', dimension: 'self_compassion' as any, // Typecast for custom dimension
+    id: 'q_guided_core_09', version: 1, framework: 'Mindfulness', dimension: 'self_compassion' as any,
     title: 'Self-Compassion', question: 'If a good friend had your exact day, what kind words would you say to them?',
     description: 'Take a moment to say those exact words to yourself.',
     inputType: 'text_long', optional: false, order: 8, tags: ['core'], analysisWeight: 1.8,
@@ -147,62 +148,36 @@ const GUIDED_CORE_QUESTIONS: ReflectionQuestion[] = [
 
 // ============================================================================
 // SPRINT 2: GUIDED REFLECTION - LAYER 2 (POOL)
-// Purpose: 20 rotational questions that dig into specific clinical dimensions
-// while maintaining a warm, conversational tone.
 // ============================================================================
 const GUIDED_POOL_QUESTIONS: ReflectionQuestion[] = [
-  // --- Autonomy (SDT) ---
   { id: 'q_pool_01', version: 1, framework: 'Self-Determination Theory', dimension: 'autonomy', title: 'Agency', question: 'Where did you feel most in control of your choices today?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.3 },
   { id: 'q_pool_02', version: 1, framework: 'Self-Determination Theory', dimension: 'autonomy', title: 'Boundaries', question: 'Did you say "no" to anything today to protect your peace?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.4 },
-  
-  // --- Mindfulness (ACT / Mindfulness) ---
   { id: 'q_pool_03', version: 1, framework: 'Mindfulness', dimension: 'mindfulness' as any, title: 'Presence', question: 'Were there any moments today where you felt completely present in your body?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.2 },
   { id: 'q_pool_04', version: 1, framework: 'Mindfulness', dimension: 'mindfulness' as any, title: 'Senses', question: 'What is the most beautiful thing you saw, heard, or tasted today?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.0 },
   { id: 'q_pool_05', version: 1, framework: 'ACT', dimension: 'mindfulness' as any, title: 'Stillness', question: 'Did you take any moments just to breathe and be still today?', inputType: 'boolean', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.0 },
-
-  // --- Stress / Cognitive Load (CBT) ---
   { id: 'q_pool_06', version: 1, framework: 'CBT', dimension: 'stress', title: 'Letting Go', question: 'Is there a worry you can gently set down for the night?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.5 },
   { id: 'q_pool_07', version: 1, framework: 'CBT', dimension: 'stress', title: 'Expectations', question: 'What is a "should" that you can forgive yourself for not doing today?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.6 },
-  
-  // --- Meaning / Purpose (ACT / PERMA) ---
   { id: 'q_pool_08', version: 1, framework: 'PERMA', dimension: 'meaning', title: 'Flow', question: 'Did you do anything today that made you completely lose track of time?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.2 },
   { id: 'q_pool_09', version: 1, framework: 'ACT', dimension: 'purpose' as any, title: 'Alignment', question: 'Did your actions today align with the person you want to become?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.5 },
   { id: 'q_pool_10', version: 1, framework: 'ACT', dimension: 'meaning', title: 'Narrative', question: 'If today was a chapter in your life story, what would the title be?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.3 },
-
-  // --- Competence / Growth (CBT / SDT) ---
   { id: 'q_pool_11', version: 1, framework: 'CBT', dimension: 'competence', title: 'Resilience', question: 'What is an obstacle you successfully navigated recently?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.4 },
   { id: 'q_pool_12', version: 1, framework: 'CBT', dimension: 'growth', title: 'Learning', question: 'What is a mistake you made today that you can learn from without judgment?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.5 },
   { id: 'q_pool_13', version: 1, framework: 'Self-Determination Theory', dimension: 'competence', title: 'Strengths', question: 'What natural skill or strength did you rely on today?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.2 },
-
-  // --- Relationships (PERMA) ---
   { id: 'q_pool_14', version: 1, framework: 'PERMA', dimension: 'relationships', title: 'Connection', question: 'Who is someone you would like to reach out to this week?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.0 },
   { id: 'q_pool_15', version: 1, framework: 'PERMA', dimension: 'relationships', title: 'Joy', question: 'Did you have any interactions today that made you smile?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.0 },
-
-  // --- Emotion / Self-Compassion (CBT / Mindfulness) ---
   { id: 'q_pool_16', version: 1, framework: 'CBT', dimension: 'emotional_wellbeing', title: 'Emotions', question: 'What emotion visited you the most today, and what was it trying to tell you?', inputType: 'text_long', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.6 },
   { id: 'q_pool_17', version: 1, framework: 'Mindfulness', dimension: 'self_compassion' as any, title: 'Grace', question: 'Where can you give yourself a little more grace today?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.5 },
-
-  // --- Energy / Vitality (General) ---
   { id: 'q_pool_18', version: 1, framework: 'General', dimension: 'energy', title: 'Drain', question: 'What drained your energy today, and how can you protect it tomorrow?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.3 },
   { id: 'q_pool_19', version: 1, framework: 'General', dimension: 'energy', title: 'Charge', question: 'What activity brought you the most energy or relief today?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.2 },
-  
-  // --- Gratitude (Positive Psychology) ---
   { id: 'q_pool_20', version: 1, framework: 'Gratitude', dimension: 'gratitude', title: 'Perspective', question: 'What is a privilege or blessing you might have taken for granted today?', inputType: 'text_short', optional: true, order: 10, tags: ['pool'], analysisWeight: 1.4 },
 ];
 
-/**
- * Deterministic Builder for Guided Reflections.
- * Combines the 10 core questions with 2 rotating pool questions.
- */
 function buildGuidedTemplate(): ReflectionTemplate {
-  // Simple deterministic rotation based on the day of the year
   const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24);
-  
   const poolStartIndex = (dayOfYear * 2) % GUIDED_POOL_QUESTIONS.length;
   const poolQuestion1 = GUIDED_POOL_QUESTIONS[poolStartIndex];
   const poolQuestion2 = GUIDED_POOL_QUESTIONS[(poolStartIndex + 1) % GUIDED_POOL_QUESTIONS.length];
 
-  // Adjust order dynamically so they appear at the end of the reflection
   poolQuestion1.order = 10;
   poolQuestion2.order = 11;
 
@@ -216,23 +191,33 @@ function buildGuidedTemplate(): ReflectionTemplate {
   };
 }
 
-// ============================================================================
-// REGISTRY & EXPORTS
-// ============================================================================
 const TEMPLATE_REGISTRY: Record<ReflectionMode, ReflectionTemplate[] | (() => ReflectionTemplate)> = {
   quick: [QUICK_REFLECTION_TEMPLATE],
-  guided: buildGuidedTemplate, // Uses the dynamic builder
+  guided: buildGuidedTemplate,
   deep: [] 
 };
 
-export function getReflectionTemplate(mode: ReflectionMode): ReflectionTemplate {
+// ============================================================================
+// SPRINT 4: CONTINUITY UPDATE (Now async and fetches follow-ups!)
+// ============================================================================
+export async function getReflectionTemplate(mode: ReflectionMode): Promise<ReflectionTemplate> {
   const templateOrBuilder = TEMPLATE_REGISTRY[mode];
   
-  if (!templateOrBuilder) return QUICK_REFLECTION_TEMPLATE;
+  let baseTemplate = QUICK_REFLECTION_TEMPLATE;
   
-  if (typeof templateOrBuilder === 'function') {
-    return templateOrBuilder();
+  if (templateOrBuilder) {
+    if (typeof templateOrBuilder === 'function') {
+      baseTemplate = templateOrBuilder();
+    } else {
+      baseTemplate = templateOrBuilder[0] || QUICK_REFLECTION_TEMPLATE;
+    }
   }
   
-  return templateOrBuilder[0] || QUICK_REFLECTION_TEMPLATE;
+  // Inject the Memory/Continuity layer
+  const followUps = await getFollowUpQuestions();
+  
+  return {
+    ...baseTemplate,
+    questions: [...followUps, ...baseTemplate.questions]
+  };
 }
