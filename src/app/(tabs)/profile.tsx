@@ -54,6 +54,15 @@ export default function ProfileScreen() {
       
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
+        {/* === TEMPORARY TEST BUTTON FOR ONBOARDING === */}
+        <TouchableOpacity 
+          style={{ backgroundColor: safeColors.primary, padding: 16, marginHorizontal: 16, marginBottom: 24, borderRadius: 12, alignItems: 'center' }} 
+          onPress={() => router.push('/onboarding')}
+        >
+          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Test Onboarding Screen</Text>
+        </TouchableOpacity>
+        {/* ============================================== */}
+
         {/* Presentation Section */}
         <Text style={styles.sectionTitle}>Demo & Presentation</Text>
         <View style={styles.card}>
@@ -102,7 +111,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   content: { paddingBottom: 40, paddingTop: 16 },
   sectionTitle: { ...safeTypography.label, color: safeColors.textSecondary, marginLeft: 16, marginBottom: 8, marginTop: 16 },
-  card: { backgroundColor: safeColors.cardBackground, borderRadius: 16, borderWidth: 1, borderColor: safeColors.border, overflow: 'hidden' },
+  card: { backgroundColor: safeColors.cardBackground, borderRadius: 16, borderWidth: 1, borderColor: safeColors.border, overflow: 'hidden', marginHorizontal: 16 },
   settingsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: safeColors.cardBackground },
   rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: safeColors.primary + '15', justifyContent: 'center', alignItems: 'center' },
