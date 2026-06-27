@@ -1,62 +1,112 @@
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { Screen } from '@/components/ui/screen';
 import { Header } from '@/components/ui/header';
 import { Feather } from '@expo/vector-icons';
-import { colors, spacing, radius, typography } from '@/theme';
+import { injectDemoData } from '@/services/demo-service';
+import { useRouter } from 'expo-router';
+import { colors, spacing, typography, radius } from '@/theme';
 
-// Reusable menu item component
-const MenuItem = ({ icon, title, description }: { icon: keyof typeof Feather.glyphMap, title: string, description: string }) => (
-  <View style={styles.menuItem}>
-    <View style={styles.iconContainer}>
-      <Feather name={icon} size={20} color={colors.primary} />
-    </View>
-    <View style={styles.menuText}>
-      <Text style={styles.menuTitle}>{title}</Text>
-      <Text style={styles.menuDescription}>{description}</Text>
-    </View>
-    <Feather name="chevron-right" size={20} color={colors.textSecondary} />
-  </View>
-);
+const safeColors = { primary: (colors as any).primary || '#007AFF', cardBackground: (colors as any).cardBackground || '#FFFFFF', text: (colors as any).text || '#111111', textSecondary: (colors as any).textSecondary || '#666666', border: (colors as any).border || '#EEEEEE', background: '#F9F9F9', error: '#FF3B30' };
+const safeTypography = { h3: (typography as any).h3 || { fontSize: 18, fontWeight: '600' }, body: (typography as any).body || { fontSize: 16 }, label: (typography as any).label || { fontSize: 12, textTransform: 'uppercase' } };
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const [localBackup, setLocalBackup] = useState(true);
+
+  const handleInjectDemo = async () => {
+    Alert.alert(
+      "Initialize Demo Mode",
+      "This will populate the app with realistic presentation data. Proceed?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Inject Data", style: "default", onPress: async () => {
+            await injectDemoData();
+            Alert.alert("Success", "Demo data injected! Restart the app or visit the Dashboard to see it.");
+            router.push('/');
+        }}
+      ]
+    );
+  };
+
+  const SettingsRow = ({ icon, title, subtitle, onPress, toggleValue, onToggle, destructive }: any) => (
+    <TouchableOpacity style={styles.settingsRow} onPress={onPress} disabled={!onPress} activeOpacity={0.7}>
+      <View style={styles.rowLeft}>
+        <View style={[styles.iconBox, destructive && { backgroundColor: safeColors.error + '15' }]}>
+          <Feather name={icon} size={18} color={destructive ? safeColors.error : safeColors.primary} />
+        </View>
+        <View>
+          <Text style={[styles.rowTitle, destructive && { color: safeColors.error }]}>{title}</Text>
+          {subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
+        </View>
+      </View>
+      {onToggle ? (
+        <Switch value={toggleValue} onValueChange={onToggle} trackColor={{ true: safeColors.primary }} />
+      ) : (
+        <Feather name="chevron-right" size={20} color={safeColors.textSecondary} />
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <Screen>
-      <Header title="Profile" subtitle="Your personal growth hub" />
-      <ScrollView contentContainerStyle={styles.container}>
-        <MenuItem icon="database" title="Memory Engine" description="Manage what the AI knows about you" />
-        <MenuItem icon="target" title="Goals" description="Track your long-term aspirations" />
-        <MenuItem icon="check-circle" title="Habits" description="Manage your daily routines" />
-        <MenuItem icon="settings" title="Settings" description="App preferences and account" />
+      <Header title="Profile & Trust" subtitle="You own your data." />
+      
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        
+        {/* Presentation Section */}
+        <Text style={styles.sectionTitle}>Demo & Presentation</Text>
+        <View style={styles.card}>
+          <SettingsRow 
+            icon="zap" 
+            title="Load Pitch Data" 
+            subtitle="Populates timeline and insights for demos" 
+            onPress={handleInjectDemo} 
+          />
+        </View>
+
+        {/* Data & Privacy Section */}
+        <Text style={styles.sectionTitle}>Data Architecture (Local-First)</Text>
+        <View style={styles.card}>
+          <SettingsRow 
+            icon="hard-drive" 
+            title="Local Device Storage" 
+            subtitle="Data never leaves this device" 
+            toggleValue={localBackup}
+            onToggle={setLocalBackup} 
+          />
+          <View style={styles.divider} />
+          <SettingsRow 
+            icon="download" 
+            title="Export JSON Backup" 
+            subtitle="Download your encrypted data" 
+            onPress={() => Alert.alert("Exporting", "Generating local JSON backup...")} 
+          />
+        </View>
+
+        {/* Account Settings */}
+        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={styles.card}>
+          <SettingsRow icon="user" title="Personal Info" onPress={() => {}} />
+          <View style={styles.divider} />
+          <SettingsRow icon="bell" title="Notifications" onPress={() => {}} />
+          <View style={styles.divider} />
+          <SettingsRow icon="trash-2" title="Erase All Data" destructive onPress={() => {}} />
+        </View>
+
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: spacing.md,
-    paddingBottom: spacing.xxl,
-    marginTop: spacing.md,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#007AFF15', // Subtle primary background
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  menuText: { flex: 1 },
-  menuTitle: { ...typography.subtitle, color: colors.text, marginBottom: 2 },
-  menuDescription: { ...typography.body, fontSize: 13, color: colors.textSecondary },
+  content: { paddingBottom: 40, paddingTop: 16 },
+  sectionTitle: { ...safeTypography.label, color: safeColors.textSecondary, marginLeft: 16, marginBottom: 8, marginTop: 16 },
+  card: { backgroundColor: safeColors.cardBackground, borderRadius: 16, borderWidth: 1, borderColor: safeColors.border, overflow: 'hidden' },
+  settingsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: safeColors.cardBackground },
+  rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: safeColors.primary + '15', justifyContent: 'center', alignItems: 'center' },
+  rowTitle: { ...safeTypography.body, color: safeColors.text, fontWeight: '500' },
+  rowSubtitle: { ...safeTypography.label, color: safeColors.textSecondary, textTransform: 'none', marginTop: 2 },
+  divider: { height: 1, backgroundColor: safeColors.border, marginLeft: 60 },
 });
