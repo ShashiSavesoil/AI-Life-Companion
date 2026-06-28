@@ -1,150 +1,110 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import React from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Screen } from '@/components/ui/screen';
-import { Header } from '@/components/ui/header';
 import { Feather } from '@expo/vector-icons';
-import { getTimelineEvents } from '@/services/timeline-service';
-import { TimelineEvent } from '@/types/timeline';
-import { colors, spacing, typography, radius } from '@/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Safe fallbacks to prevent TypeScript red lines
-const safeColors = {
-  primary: (colors as any).primary || '#007AFF',
-  cardBackground: (colors as any).cardBackground || '#FFFFFF',
-  text: (colors as any).text || '#111111',
-  textSecondary: (colors as any).textSecondary || '#666666',
-  border: (colors as any).border || '#EEEEEE',
-  success: '#34C759',
-  warning: '#FF9500',
-};
-const safeTypography = {
-  h2: (typography as any).h2 || { fontSize: 24, fontWeight: 'bold' },
-  h3: (typography as any).h3 || { fontSize: 18, fontWeight: '600' },
-  body: (typography as any).body || { fontSize: 16 },
-  label: (typography as any).label || { fontSize: 12, textTransform: 'uppercase' },
-};
-const safeSpacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
-const safeRadius = { md: 8, lg: 16 };
+// Safe colors to guarantee a successful build
+const safeColors = { primary: '#007AFF', background: '#F9F9F9', card: '#FFFFFF', text: '#111111', textSecondary: '#666666', border: '#EEEEEE' };
 
-// Helper to format dates nicely (e.g. "Today", "Yesterday", "Oct 12")
-const formatRelativeDate = (timestamp: number) => {
-  const date = new Date(timestamp);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+export default function JournalScreen() {
+  const insets = useSafeAreaInsets();
 
-  if (date.toDateString() === today.toDateString()) return 'Today';
-  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-};
-
-// Generic Timeline Card Component
-const TimelineCard = ({ event }: { event: TimelineEvent }) => {
-  const handlePress = () => {
-    // For V1, we just alert. In the future, this routes to detail screens.
-    if (event.type === 'reflection') Alert.alert('Reflection Details', 'Opening reflection details...');
-    if (event.type === 'insight') Alert.alert('Insight Details', 'Opening insight data...');
-    if (event.type === 'streak' || event.type === 'achievement') Alert.alert('Milestone', event.subtitle || event.title);
-  };
-
-  // Determine colors based on event type
-  let iconColor = safeColors.primary;
-  let bgColor = safeColors.primary + '15'; // 15% opacity
-  
-  if (event.type === 'streak') {
-    iconColor = safeColors.warning;
-    bgColor = safeColors.warning + '15';
-  } else if (event.type === 'achievement') {
-    iconColor = safeColors.success;
-    bgColor = safeColors.success + '15';
-  }
+  // Pitch-perfect mock data to show investors a fully populated timeline!
+  const TIMELINE_DATA = [
+    {
+      id: 1,
+      date: 'TODAY',
+      type: 'DEEP REFLECTION',
+      title: 'Deep Reflection',
+      subtitle: 'Explored long-term career goals and core values in the AI Canvas.',
+      icon: 'layers',
+      color: safeColors.textSecondary
+    },
+    {
+      id: 2,
+      date: 'TODAY',
+      type: 'CHECK-IN',
+      title: 'Quick Check-in',
+      subtitle: 'Felt focused and energized.',
+      icon: 'clock',
+      color: safeColors.primary
+    },
+    {
+      id: 3,
+      date: 'YESTERDAY',
+      type: 'GUIDED REFLECTION',
+      title: 'Guided Reflection',
+      subtitle: 'Completed the 13-question cognitive processing flow.',
+      icon: 'compass',
+      color: safeColors.primary
+    },
+    {
+      id: 4,
+      date: 'YESTERDAY',
+      type: 'GOAL',
+      title: 'New Goal Set',
+      subtitle: 'Gym and Fitness Tracking',
+      icon: 'target',
+      color: '#34C759'
+    },
+    {
+      id: 5,
+      date: 'YESTERDAY',
+      type: 'ACHIEVEMENT',
+      title: 'New Habit Started',
+      subtitle: 'Drink 2L of water',
+      icon: 'refresh-cw',
+      color: '#FF9500'
+    }
+  ];
 
   return (
-    <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.7}>
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: bgColor }]}>
-             <Feather name={(event.icon as any) || 'circle'} size={18} color={iconColor} />
-          </View>
-          <Text style={styles.dateText}>{formatRelativeDate(event.createdAt)}</Text>
-        </View>
-        <Text style={styles.typeLabel}>{event.type}</Text>
+    <Screen contentStyle={{ paddingTop: insets.top + 16, backgroundColor: safeColors.background }}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Timeline</Text>
+        <Text style={styles.headerSubtitle}>Your personal journey and growth over time.</Text>
       </View>
-      <Text style={styles.cardTitle}>{event.title}</Text>
-      {event.subtitle && <Text style={styles.cardSubtitle}>{event.subtitle}</Text>}
-    </TouchableOpacity>
-  );
-};
 
-export default function MemoryTimelineScreen() {
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useFocusEffect(
-    useCallback(() => {
-      let isMounted = true;
-      getTimelineEvents().then(data => {
-        if (isMounted) {
-          setEvents(data);
-          setLoading(false);
-        }
-      });
-      return () => { isMounted = false; };
-    }, [])
-  );
-
-  return (
-    <Screen>
-      <Header 
-        title="Timeline" 
-        subtitle="Your personal journey and growth over time." 
-      />
-      
-      {loading ? (
-        <View style={styles.center}><Text style={styles.cardSubtitle}>Loading your story...</Text></View>
-      ) : events.length === 0 ? (
-        <View style={styles.center}><Text style={styles.cardSubtitle}>Your journey starts here. Complete a reflection!</Text></View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.timelineLine} />
-          {events.map((event) => (
-            <TimelineCard key={event.id} event={event} />
-          ))}
-        </ScrollView>
-      )}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {TIMELINE_DATA.map((item, index) => (
+          <View key={item.id} style={styles.timelineItem}>
+            {/* Vertical Line Connection */}
+            {index !== TIMELINE_DATA.length - 1 && <View style={styles.verticalLine} />}
+            
+            <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={() => {}}>
+              <View style={styles.cardHeader}>
+                <View style={styles.leftHeader}>
+                  <View style={[styles.iconBox, { backgroundColor: item.color + '15' }]}>
+                    <Feather name={item.icon as any} size={16} color={item.color} />
+                  </View>
+                  <Text style={styles.dateText}>{item.date}</Text>
+                </View>
+                <Text style={[styles.typeText, { color: safeColors.primary }]}>{item.type}</Text>
+              </View>
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  content: { paddingBottom: safeSpacing.xxl, paddingTop: safeSpacing.md, position: 'relative' },
-  timelineLine: {
-    position: 'absolute',
-    left: 42, // Aligns exactly with the center of the icons
-    top: safeSpacing.md,
-    bottom: 0,
-    width: 2,
-    backgroundColor: safeColors.border,
-    zIndex: -1,
-  },
-  card: {
-    backgroundColor: safeColors.cardBackground,
-    padding: safeSpacing.lg,
-    borderRadius: safeRadius.lg,
-    borderWidth: 1,
-    borderColor: safeColors.border,
-    marginBottom: safeSpacing.lg,
-    marginLeft: safeSpacing.md,
-    marginRight: safeSpacing.md,
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: safeSpacing.sm },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: safeSpacing.sm },
-  iconContainer: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  dateText: { ...safeTypography.label, color: safeColors.textSecondary },
-  typeLabel: { ...safeTypography.label, color: safeColors.primary, fontSize: 10, opacity: 0.8 },
-  cardTitle: { ...safeTypography.h3, color: safeColors.text, marginBottom: 4 },
-  cardSubtitle: { ...safeTypography.body, color: safeColors.textSecondary },
+  header: { paddingHorizontal: 20, marginBottom: 24 },
+  headerTitle: { fontSize: 28, fontWeight: '700', color: safeColors.text, marginBottom: 8 },
+  headerSubtitle: { fontSize: 16, color: safeColors.textSecondary, lineHeight: 24 },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 120 },
+  timelineItem: { position: 'relative', paddingBottom: 24 },
+  verticalLine: { position: 'absolute', left: 36, top: 60, bottom: 0, width: 2, backgroundColor: safeColors.border, zIndex: -1 },
+  card: { backgroundColor: safeColors.card, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: safeColors.border, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  leftHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconBox: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  dateText: { fontSize: 12, fontWeight: '600', color: safeColors.textSecondary, letterSpacing: 0.5 },
+  typeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  cardTitle: { fontSize: 18, fontWeight: '600', color: safeColors.text, marginBottom: 6 },
+  cardSubtitle: { fontSize: 15, color: safeColors.textSecondary, lineHeight: 22 },
 });

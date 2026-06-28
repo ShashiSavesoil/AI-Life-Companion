@@ -54,15 +54,7 @@ export default function ProfileScreen() {
       
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         
-        {/* === TEMPORARY TEST BUTTON FOR ONBOARDING === */}
-        <TouchableOpacity 
-          style={{ backgroundColor: safeColors.primary, padding: 16, marginHorizontal: 16, marginBottom: 24, borderRadius: 12, alignItems: 'center' }} 
-          onPress={() => router.push('/onboarding')}
-        >
-          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Test Onboarding Screen</Text>
-        </TouchableOpacity>
-        {/* ============================================== */}
-
+        
         {/* Presentation Section */}
         <Text style={styles.sectionTitle}>Demo & Presentation</Text>
         <View style={styles.card}>
